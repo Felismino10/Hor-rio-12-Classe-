@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SUBJECTS, getScheduleForClass, CLASS_OPTIONS } from '../constants';
 import { getCurrentTimeSlot, getNextTimeSlot, getEffectiveDailySchedule, calculateTimeLeft, calculateSchoolYearProgress, calculateStreak, getDayName } from '../utils';
@@ -75,20 +74,24 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6 pb-20 relative">
       <header className="flex justify-between items-end">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+             {/* Logo Added Here */}
+             <div className="w-12 h-12 rounded-xl bg-white dark:bg-gray-800 shadow-sm p-1 flex items-center justify-center border border-gray-100 dark:border-gray-700">
+                <img src="https://cdn-icons-png.flaticon.com/512/4305/4305432.png" alt="Logo" className="w-full h-full object-contain" />
+             </div>
              <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">O Meu Dia</h1>
                 <p className="text-gray-500 dark:text-gray-400 capitalize text-sm">
                     {formattedDate}
                 </p>
              </div>
-             <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary">
+             <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary mb-1">
                  <Settings size={18} />
              </button>
         </div>
         <div className="flex items-center gap-3">
              {/* Digital Clock */}
-             <div className="text-4xl font-mono font-bold tracking-tighter text-gray-800 dark:text-white leading-none">
+             <div className="text-4xl font-mono font-bold tracking-tighter text-gray-800 dark:text-white leading-none hidden xs:block sm:block">
                 {timeString}
              </div>
 
