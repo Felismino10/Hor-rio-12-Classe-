@@ -1,15 +1,16 @@
+
 import React, { useState, useEffect } from 'react';
 import { SUBJECTS, getScheduleForClass, CLASS_OPTIONS } from '../constants';
 import { getCurrentTimeSlot, getNextTimeSlot, getEffectiveDailySchedule, calculateTimeLeft, calculateSchoolYearProgress, calculateStreak, getDayName } from '../utils';
 import { Card } from '../components/Card';
-import { Clock, MapPin, Moon, Sun, AlertCircle, Flame, Trophy, ListChecks, Calendar, Settings, X } from 'lucide-react';
+import { Clock, MapPin, AlertCircle, Flame, Trophy, ListChecks, Calendar, Settings, X, User, Download, Upload, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import { AppData } from '../types';
 
 const useAppData = () => {
     const [data, setData] = useState<AppData>(() => {
         const saved = localStorage.getItem('liceuAppData');
-        return saved ? JSON.parse(saved) : { tasks: [], notes: [], grades: [], attendance: {}, customSubjectDetails: {}, scheduleOverrides: [], studyActivityDates: [], selectedClassId: '12-CH' };
+        return saved ? JSON.parse(saved) : { tasks: [], notes: [], grades: [], resources: [], attendance: {}, customSubjectDetails: {}, scheduleOverrides: [], studyActivityDates: [], selectedClassId: '12-CH', userName: 'Estudante' };
     });
     
     // Save whenever data changes
@@ -24,11 +25,17 @@ export const Dashboard: React.FC = () => {
   const [now, setNow] = useState(new Date());
   const { data, setData } = useAppData();
   const [showSettings, setShowSettings] = useState(false);
+  const [tempName, setTempName] = useState(data.userName || 'Estudante');
   
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000); // Update every second for accurate clock feel, though minute is fine
+    const timer = setInterval(() => setNow(new Date()), 1000); 
     return () => clearInterval(timer);
   }, []);
+
+  // Update temp name when modal opens
+  useEffect(() => {
+      if(showSettings) setTempName(data.userName || 'Estudante');
+  }, [showSettings, data.userName]);
 
   // Get Schedule based on selected Class
   const activeSchedule = getScheduleForClass(data.selectedClassId);
@@ -68,11 +75,54 @@ export const Dashboard: React.FC = () => {
 
   const handleClassChange = (classId: string) => {
       setData(prev => ({ ...prev, selectedClassId: classId }));
-      setShowSettings(false);
+  };
+
+  const saveName = () => {
+      setData(prev => ({ ...prev, userName: tempName }));
+      alert('Nome atualizado!');
+  };
+
+  // --- Backup & Restore Logic ---
+  const handleExportData = () => {
+      const dataStr = JSON.stringify(data);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `liceu-sumbe-backup-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          try {
+              const importedData = JSON.parse(event.target?.result as string);
+              // Simple validation check
+              if (importedData && Array.isArray(importedData.tasks)) {
+                  if (window.confirm('Isto irá substituir todos os dados atuais pelos do ficheiro. Tem a certeza?')) {
+                      setData(importedData);
+                      alert('Dados restaurados com sucesso!');
+                      setShowSettings(false);
+                  }
+              } else {
+                  alert('Ficheiro de backup inválido.');
+              }
+          } catch (err) {
+              alert('Erro ao ler o ficheiro.');
+          }
+      };
+      reader.readAsText(file);
   };
 
   return (
-    <div className="space-y-6 pb-20 relative">
+    <div className="space-y-6 pb-20 relative animate-fade-in">
       <header className="flex justify-between items-end">
         <div className="flex items-center gap-3">
              {/* Logo Added Here */}
@@ -80,12 +130,14 @@ export const Dashboard: React.FC = () => {
                 <img src="https://cdn-icons-png.flaticon.com/512/4305/4305432.png" alt="Logo" className="w-full h-full object-contain" />
              </div>
              <div>
-                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">O Meu Dia</h1>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                    Olá, {data.userName || 'Estudante'}
+                </h1>
                 <p className="text-gray-500 dark:text-gray-400 capitalize text-sm">
                     {formattedDate}
                 </p>
              </div>
-             <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary mb-1">
+             <button onClick={() => setShowSettings(true)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-primary mb-1 transition-colors">
                  <Settings size={18} />
              </button>
         </div>
@@ -95,7 +147,7 @@ export const Dashboard: React.FC = () => {
                 {timeString}
              </div>
 
-             <div className="flex flex-col items-center justify-center px-3 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800 h-full">
+             <div className="flex flex-col items-center justify-center px-3 py-1 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-100 dark:border-orange-800 h-full animate-pulse-slow">
                 <div className="flex items-center text-orange-500 font-bold">
                     <Flame size={16} className={`mr-1 ${streak > 0 ? 'fill-orange-500 animate-pulse' : ''}`} />
                     <span>{streak}</span>
@@ -107,40 +159,87 @@ export const Dashboard: React.FC = () => {
 
       {/* Settings Modal */}
       {showSettings && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-              <div className="bg-white dark:bg-dark-card rounded-xl w-full max-w-sm shadow-2xl">
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+              <div className="bg-white dark:bg-dark-card rounded-xl w-full max-w-sm shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
                   <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-                      <h3 className="font-bold text-gray-900 dark:text-white">Definições</h3>
+                      <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          <Settings size={18} /> Definições
+                      </h3>
                       <button onClick={() => setShowSettings(false)}><X size={24} className="text-gray-500" /></button>
                   </div>
-                  <div className="p-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Selecionar Turma/Horário</label>
-                      <div className="space-y-2">
-                          {CLASS_OPTIONS.map(opt => (
-                              <button
-                                key={opt.id}
-                                onClick={() => handleClassChange(opt.id)}
-                                className={`w-full p-3 text-left rounded-lg border ${
-                                    data.selectedClassId === opt.id 
-                                    ? 'border-primary bg-blue-50 dark:bg-blue-900/20 text-primary' 
-                                    : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
-                                }`}
-                              >
-                                  {opt.label}
+                  
+                  <div className="p-4 overflow-y-auto space-y-6">
+                      {/* Profile Section */}
+                      <section>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase mb-3 flex items-center gap-1">
+                              <User size={12} /> Perfil
+                          </h4>
+                          <div className="flex gap-2">
+                              <input 
+                                type="text" 
+                                value={tempName} 
+                                onChange={(e) => setTempName(e.target.value)}
+                                className="flex-1 border border-gray-300 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-lg px-3 py-2 text-sm dark:text-white focus:ring-2 focus:ring-primary focus:outline-none"
+                                placeholder="O teu nome"
+                              />
+                              <button onClick={saveName} className="p-2 bg-primary text-white rounded-lg">
+                                  <Save size={18} />
                               </button>
-                          ))}
-                      </div>
+                          </div>
+                      </section>
+
+                      {/* Class Selection */}
+                      <section>
+                          <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Turma / Horário</h4>
+                           <div className="space-y-2">
+                              {CLASS_OPTIONS.map(opt => (
+                                  <button
+                                    key={opt.id}
+                                    onClick={() => handleClassChange(opt.id)}
+                                    className={`w-full p-3 text-left rounded-lg border text-sm font-medium transition-colors ${
+                                        data.selectedClassId === opt.id 
+                                        ? 'border-primary bg-blue-50 dark:bg-blue-900/20 text-primary' 
+                                        : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                    }`}
+                                  >
+                                      {opt.label}
+                                  </button>
+                              ))}
+                          </div>
+                      </section>
+
+                      {/* Data Management */}
+                      <section className="pt-4 border-t border-gray-100 dark:border-gray-700">
+                           <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Backup & Dados</h4>
+                           <div className="grid grid-cols-2 gap-3">
+                               <button 
+                                    onClick={handleExportData}
+                                    className="flex flex-col items-center justify-center p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                               >
+                                   <Download size={20} className="text-gray-600 dark:text-gray-300 mb-1" />
+                                   <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Exportar</span>
+                               </button>
+                               <label className="flex flex-col items-center justify-center p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors cursor-pointer">
+                                   <Upload size={20} className="text-gray-600 dark:text-gray-300 mb-1" />
+                                   <span className="text-xs font-medium text-gray-700 dark:text-gray-200">Restaurar</span>
+                                   <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
+                               </label>
+                           </div>
+                           <p className="text-[10px] text-gray-400 mt-2 text-center leading-tight">
+                               Guarde o ficheiro JSON num local seguro. Ao restaurar, os dados atuais serão substituídos.
+                           </p>
+                      </section>
                   </div>
               </div>
           </div>
       )}
 
       {/* Current Class Hero Card */}
-      <div className="relative">
+      <div className="relative animate-slide-up" style={{ animationDelay: '0.1s' }}>
         {currentSlot && currentSubject ? (
           <div className={`p-6 rounded-2xl text-white shadow-lg bg-gradient-to-br from-${currentSubject.color.split('-')[0]}-500 to-${currentSubject.color.split('-')[0]}-700 relative overflow-hidden`}>
             {/* Background Pattern */}
-            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl"></div>
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-xl animate-pulse-slow"></div>
             
             <div className="flex justify-between items-start mb-4 relative z-10">
               <span className="px-2 py-1 bg-white/20 rounded-md text-sm font-medium backdrop-blur-sm flex items-center">
@@ -163,7 +262,7 @@ export const Dashboard: React.FC = () => {
             {/* Progress Bar */}
             <div className="mt-6 h-1.5 bg-black/20 rounded-full overflow-hidden relative z-10">
               <div 
-                className="h-full bg-white/90 rounded-full transition-all duration-500"
+                className="h-full bg-white/90 rounded-full transition-all duration-500 ease-linear"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -180,7 +279,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* Motivation & Progress Row */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 animate-slide-up" style={{ animationDelay: '0.2s' }}>
          <Card className="flex flex-col justify-between min-h-[100px] relative overflow-hidden">
             <div className="flex justify-between items-start mb-2">
                 <span className="text-xs font-semibold text-gray-500 dark:text-gray-400">Ano Letivo</span>
@@ -191,7 +290,7 @@ export const Dashboard: React.FC = () => {
                     <span className="text-2xl font-bold text-gray-900 dark:text-white">{yearProgress}%</span>
                 </div>
                 <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-primary rounded-full" style={{ width: `${yearProgress}%` }} />
+                    <div className="h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${yearProgress}%` }} />
                 </div>
             </div>
          </Card>
@@ -213,6 +312,7 @@ export const Dashboard: React.FC = () => {
 
       {/* Next Class Preview */}
       {nextSlot && nextSubject && (
+        <div className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
         <Card title="A Seguir">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -224,7 +324,7 @@ export const Dashboard: React.FC = () => {
                     {nextSubject.name}
                     {/* Priority indicator */}
                     {(data.customSubjectDetails[nextSubject.id]?.isPriority) && (
-                        <span className="ml-2 w-2 h-2 bg-red-500 rounded-full" title="Prioridade Alta"></span>
+                        <span className="ml-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" title="Prioridade Alta"></span>
                     )}
                 </h4>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -239,9 +339,11 @@ export const Dashboard: React.FC = () => {
             </div>
           </div>
         </Card>
+        </div>
       )}
 
       {/* Daily Timeline */}
+      <div className="animate-slide-up" style={{ animationDelay: '0.4s' }}>
       <Card title="Linha do Tempo Hoje">
         <div className="relative pl-4 border-l-2 border-gray-200 dark:border-gray-700 space-y-6 my-2">
           {effectiveTodaySchedule.map((slot, index) => {
@@ -251,8 +353,8 @@ export const Dashboard: React.FC = () => {
             const customDetails = data.customSubjectDetails[subject.id] || {};
 
             return (
-              <div key={index} className={`relative ${isPast ? 'opacity-50' : ''}`}>
-                <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white dark:border-dark-card ${isCurrent ? 'bg-primary scale-125' : 'bg-gray-300 dark:bg-gray-600'}`} />
+              <div key={index} className={`relative transition-opacity duration-500 ${isPast ? 'opacity-50' : ''}`}>
+                <div className={`absolute -left-[21px] top-1 w-3 h-3 rounded-full border-2 border-white dark:border-dark-card transition-transform duration-300 ${isCurrent ? 'bg-primary scale-125' : 'bg-gray-300 dark:bg-gray-600'}`} />
                 <div className="flex flex-col">
                   <span className="text-xs font-mono text-gray-500 dark:text-gray-400 mb-0.5">
                     {slot.startTime}
@@ -273,6 +375,7 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
       </Card>
+      </div>
     </div>
   );
 };

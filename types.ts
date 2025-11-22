@@ -62,6 +62,16 @@ export interface AttendanceRecord {
   maxAbsences: number; // Configurable limit
 }
 
+// New: Digital Library Resource
+export interface Resource {
+  id: string;
+  subjectId: string;
+  title: string;
+  url: string;
+  type: 'LINK' | 'PDF' | 'VIDEO';
+  createdAt: string;
+}
+
 // New: Temporary Schedule Override
 export interface ScheduleOverride {
   date: string; // ISO Date YYYY-MM-DD
@@ -78,13 +88,15 @@ export interface Reminder {
 
 // App State Interface for LocalStorage
 export interface AppData {
+  userName?: string; // New: User profile name
   tasks: Task[];
   notes: Note[];
-  grades: Grade[]; // New: Grades list
+  grades: Grade[]; 
+  resources: Resource[]; // New: List of resources
   attendance: Record<string, AttendanceRecord>; // Keyed by SubjectID
   customSubjectDetails: Record<string, Partial<Subject>>; // User edits to subjects
-  scheduleOverrides: ScheduleOverride[]; // New: List of temporary changes
-  studyActivityDates: string[]; // New: List of ISO dates where user was active
-  reminders: Reminder[]; // New: User configured reminders
-  selectedClassId: string; // New: Selected class schedule ID
+  scheduleOverrides: ScheduleOverride[]; 
+  studyActivityDates: string[]; 
+  reminders: Reminder[]; 
+  selectedClassId: string; 
 }

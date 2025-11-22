@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { SUBJECTS } from '../constants';
-import { Subject, Task, Note, AppData, Grade } from '../types';
+import { Subject, Task, Note, AppData, Grade, Resource } from '../types';
 import { Card } from '../components/Card';
 import { PomodoroTimer } from '../components/PomodoroTimer';
-import { ChevronRight, Plus, Trash2, Save, Phone, Mail, FileText, CheckCircle, Users, Star, Zap, Calendar as CalendarIcon, PenTool, CheckSquare, GraduationCap } from 'lucide-react';
+import { ChevronRight, Plus, Trash2, Phone, Users, Star, Zap, Calendar as CalendarIcon, CheckSquare, GraduationCap, Calculator, Target, Link as LinkIcon, FileText, Youtube, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 
 const useAppData = () => {
   const [data, setData] = useState<AppData>(() => {
     const saved = localStorage.getItem('liceuAppData');
-    return saved ? JSON.parse(saved) : { tasks: [], notes: [], grades: [], attendance: {}, customSubjectDetails: {}, scheduleOverrides: [], studyActivityDates: [], selectedClassId: '12-CH' };
+    return saved ? JSON.parse(saved) : { tasks: [], notes: [], grades: [], resources: [], attendance: {}, customSubjectDetails: {}, scheduleOverrides: [], studyActivityDates: [], selectedClassId: '12-CH' };
   });
 
   useEffect(() => {
@@ -23,7 +23,7 @@ const useAppData = () => {
 export const Subjects: React.FC = () => {
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const { data, setData } = useAppData();
-  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'tasks' | 'grades'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'tasks' | 'grades' | 'resources'>('details');
 
   // Form states
   const [noteContent, setNoteContent] = useState('');
@@ -34,6 +34,15 @@ export const Subjects: React.FC = () => {
   // Grade Form State
   const [gradeName, setGradeName] = useState('');
   const [gradeValue, setGradeValue] = useState<number | ''>('');
+  
+  // Simulator State
+  const [targetAverage, setTargetAverage] = useState<number | ''>(14);
+  const [simulatedGradeNeeded, setSimulatedGradeNeeded] = useState<number | null>(null);
+
+  // Resource Form State
+  const [resourceTitle, setResourceTitle] = useState('');
+  const [resourceUrl, setResourceUrl] = useState('');
+  const [resourceType, setResourceType] = useState<'LINK' | 'PDF' | 'VIDEO'>('LINK');
 
   const subjectsList = Object.values(SUBJECTS).filter(s => s.id !== 'FREE');
 
@@ -109,6 +118,37 @@ export const Subjects: React.FC = () => {
       logActivity();
   };
 
+  const handleAddResource = () => {
+    if (!selectedSubject || !resourceTitle.trim() || !resourceUrl.trim()) return;
+
+    // Basic URL validation
+    let finalUrl = resourceUrl;
+    if (!/^https?:\/\//i.test(finalUrl)) {
+        finalUrl = 'https://' + finalUrl;
+    }
+
+    const newResource: Resource = {
+        id: Date.now().toString(),
+        subjectId: selectedSubject.id,
+        title: resourceTitle,
+        url: finalUrl,
+        type: resourceType,
+        createdAt: new Date().toISOString()
+    };
+
+    setData(prev => ({ ...prev, resources: [newResource, ...(prev.resources || [])] }));
+    setResourceTitle('');
+    setResourceUrl('');
+    logActivity();
+  };
+
+  const deleteResource = (resId: string) => {
+    setData(prev => ({
+        ...prev,
+        resources: (prev.resources || []).filter(r => r.id !== resId)
+    }));
+  };
+
   const deleteGrade = (gradeId: string) => {
       setData(prev => ({
           ...prev,
@@ -145,10 +185,27 @@ export const Subjects: React.FC = () => {
     }));
   };
 
+  // Simulator Logic
+  const calculateNeededGrade = (currentGrades: Grade[]) => {
+      if (!targetAverage || currentGrades.length === 0) return;
+      
+      const currentSum = currentGrades.reduce((sum, g) => sum + g.value, 0);
+      const count = currentGrades.length;
+      const nextCount = count + 1;
+      
+      // Formula: (Sum + X) / (Count + 1) = Target
+      // Sum + X = Target * (Count + 1)
+      // X = (Target * (Count + 1)) - Sum
+      
+      const needed = (Number(targetAverage) * nextCount) - currentSum;
+      setSimulatedGradeNeeded(needed);
+  };
+
   if (selectedSubject) {
     const subjectNotes = data.notes.filter(n => n.subjectId === selectedSubject.id);
     const subjectTasks = data.tasks.filter(t => t.subjectId === selectedSubject.id);
     const subjectGrades = (data.grades || []).filter(g => g.subjectId === selectedSubject.id);
+    const subjectResources = (data.resources || []).filter(r => r.subjectId === selectedSubject.id);
     const customDetails = data.customSubjectDetails[selectedSubject.id] || {};
     const mergedSubject = { ...selectedSubject, ...customDetails };
 
@@ -179,24 +236,24 @@ export const Subjects: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-          {['details', 'notes', 'tasks', 'grades'].map((tab) => (
+        <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto no-scrollbar">
+          {['details', 'notes', 'tasks', 'grades', 'resources'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
-              className={`flex-1 py-3 px-2 text-xs sm:text-sm font-medium capitalize border-b-2 whitespace-nowrap ${
+              className={`flex-1 py-3 px-3 text-xs sm:text-sm font-medium capitalize border-b-2 whitespace-nowrap transition-colors ${
                 activeTab === tab 
                   ? 'border-primary text-primary' 
                   : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'
               }`}
             >
-              {tab === 'details' ? 'Estudo' : tab === 'notes' ? 'Notas' : tab === 'tasks' ? 'Tarefas' : 'Notas (Av.)'}
+              {tab === 'details' ? 'Estudo' : tab === 'notes' ? 'Notas' : tab === 'tasks' ? 'Tarefas' : tab === 'grades' ? 'Notas (Av.)' : 'Recursos'}
             </button>
           ))}
         </div>
 
         {activeTab === 'details' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in">
              {/* Smart Study Section */}
              <div className="bg-gray-50 dark:bg-dark-card border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
@@ -292,7 +349,7 @@ export const Subjects: React.FC = () => {
         )}
 
         {activeTab === 'notes' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in">
             <div className="flex space-x-2">
               <input
                 type="text"
@@ -301,13 +358,13 @@ export const Subjects: React.FC = () => {
                 placeholder="Nova anotação..."
                 className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-dark-card focus:outline-none focus:ring-2 focus:ring-primary dark:text-white"
               />
-              <button onClick={handleAddNote} className="p-2 bg-primary text-white rounded-lg">
+              <button onClick={handleAddNote} className="p-2 bg-primary text-white rounded-lg hover:scale-105 transition-transform">
                 <Plus size={24} />
               </button>
             </div>
             <div className="space-y-2">
               {subjectNotes.map(note => (
-                <div key={note.id} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 relative group">
+                <div key={note.id} className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800 rounded-lg text-sm text-gray-800 dark:text-gray-200 relative group animate-slide-up">
                   <p>{note.content}</p>
                   <span className="text-xs text-gray-400 mt-2 block">{format(new Date(note.createdAt), 'dd/MM/yyyy HH:mm')}</span>
                 </div>
@@ -318,7 +375,7 @@ export const Subjects: React.FC = () => {
         )}
 
         {activeTab === 'tasks' && (
-          <div className="space-y-4">
+          <div className="space-y-4 animate-fade-in">
              <div className="bg-white dark:bg-dark-card p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Adicionar Nova Tarefa</h3>
                 <div className="space-y-3">
@@ -354,7 +411,7 @@ export const Subjects: React.FC = () => {
                     </div>
                     <button 
                         onClick={handleAddTask}
-                        className="w-full py-2 bg-primary hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium transition-colors"
+                        className="w-full py-2 bg-primary hover:bg-blue-600 text-white rounded-lg flex items-center justify-center font-medium transition-colors active:scale-[0.98]"
                     >
                         <Plus size={18} className="mr-2" />
                         Criar Tarefa
@@ -364,12 +421,12 @@ export const Subjects: React.FC = () => {
 
             <div className="space-y-2">
               {subjectTasks.map(task => (
-                <div key={task.id} className="flex items-center p-3 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700">
+                <div key={task.id} className="flex items-center p-3 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 animate-slide-up">
                   <button 
                     onClick={() => toggleTask(task.id)}
                     className={`mr-3 flex-shrink-0 ${task.isCompleted ? 'text-green-500' : 'text-gray-300'}`}
                   >
-                    <CheckCircle size={22} fill={task.isCompleted ? 'currentColor' : 'none'} />
+                    <CheckSquare size={22} fill={task.isCompleted ? 'currentColor' : 'none'} />
                   </button>
                   <div className="flex-1 min-w-0">
                     <p className={`font-medium truncate ${task.isCompleted ? 'line-through text-gray-400' : 'text-gray-800 dark:text-white'}`}>
@@ -400,7 +457,7 @@ export const Subjects: React.FC = () => {
         )}
 
         {activeTab === 'grades' && (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-fade-in">
                 {/* Average Card */}
                 <Card className="bg-gradient-to-r from-gray-800 to-gray-900 text-white border-none">
                     <div className="flex items-center justify-between">
@@ -439,7 +496,7 @@ export const Subjects: React.FC = () => {
                         />
                         <button 
                             onClick={handleAddGrade}
-                            className="bg-primary text-white px-4 rounded-lg hover:bg-blue-600"
+                            className="bg-primary text-white px-4 rounded-lg hover:bg-blue-600 active:scale-95 transition-transform"
                         >
                             <Plus size={20} />
                         </button>
@@ -449,7 +506,7 @@ export const Subjects: React.FC = () => {
                 {/* Grades List */}
                 <div className="space-y-2">
                     {subjectGrades.map(grade => (
-                        <div key={grade.id} className="flex items-center justify-between p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <div key={grade.id} className="flex items-center justify-between p-3 bg-white dark:bg-dark-card border border-gray-200 dark:border-gray-700 rounded-lg animate-slide-up">
                             <div>
                                 <p className="font-medium text-gray-800 dark:text-white">{grade.name}</p>
                                 <p className="text-xs text-gray-400">{format(new Date(grade.createdAt), 'dd/MM/yyyy')}</p>
@@ -470,6 +527,113 @@ export const Subjects: React.FC = () => {
                         <div className="text-center py-8 text-gray-400 text-sm">
                             Nenhuma nota registada ainda.
                         </div>
+                    )}
+                </div>
+
+                {/* Simulator */}
+                 <Card title="Simulador de Média" className="border-t-4 border-t-indigo-500">
+                    <p className="text-xs text-gray-500 mb-3">Descobre quanto precisas tirar na próxima avaliação para atingir a tua meta.</p>
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="flex-1">
+                            <label className="text-xs text-gray-500 block mb-1">Média Desejada</label>
+                            <div className="relative">
+                                <Target size={16} className="absolute left-2 top-2.5 text-gray-400" />
+                                <input 
+                                    type="number" 
+                                    value={targetAverage}
+                                    onChange={(e) => setTargetAverage(Number(e.target.value))}
+                                    className="w-full pl-8 pr-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm dark:text-white"
+                                    placeholder="Ex: 14"
+                                />
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => calculateNeededGrade(subjectGrades)}
+                            className="mt-5 bg-indigo-600 text-white p-2 rounded-lg hover:bg-indigo-700"
+                        >
+                            <Calculator size={20} />
+                        </button>
+                    </div>
+                    {simulatedGradeNeeded !== null && (
+                        <div className={`p-3 rounded-lg text-center text-sm font-medium ${
+                            simulatedGradeNeeded > 20 ? 'bg-red-100 text-red-600' : 
+                            simulatedGradeNeeded < 0 ? 'bg-green-100 text-green-600' : 'bg-blue-100 text-blue-600'
+                        }`}>
+                            {simulatedGradeNeeded > 20 
+                                ? `Impossível! Precisarias de ${simulatedGradeNeeded.toFixed(1)} valores.` 
+                                : simulatedGradeNeeded <= 0
+                                    ? "Já atingiste a meta! Podes descansar."
+                                    : `Precisas de tirar ${simulatedGradeNeeded.toFixed(1)} no próximo teste.`
+                            }
+                        </div>
+                    )}
+                </Card>
+            </div>
+        )}
+
+        {activeTab === 'resources' && (
+            <div className="space-y-4 animate-fade-in">
+                <Card title="Adicionar Recurso">
+                    <div className="space-y-3">
+                        <input
+                            type="text"
+                            placeholder="Título (ex: Resumo PDF)"
+                            value={resourceTitle}
+                            onChange={(e) => setResourceTitle(e.target.value)}
+                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:text-white text-sm"
+                        />
+                        <div className="flex gap-2">
+                             <input
+                                type="text"
+                                placeholder="Link / URL"
+                                value={resourceUrl}
+                                onChange={(e) => setResourceUrl(e.target.value)}
+                                className="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary dark:text-white text-sm"
+                            />
+                            <select
+                                value={resourceType}
+                                onChange={(e) => setResourceType(e.target.value as any)}
+                                className="w-24 px-2 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm dark:text-white"
+                            >
+                                <option value="LINK">Web</option>
+                                <option value="PDF">PDF</option>
+                                <option value="VIDEO">Vídeo</option>
+                            </select>
+                        </div>
+                        <button 
+                            onClick={handleAddResource}
+                            className="w-full py-2 bg-primary text-white rounded-lg hover:bg-blue-600 active:scale-[0.98] transition-transform"
+                        >
+                            Adicionar à Biblioteca
+                        </button>
+                    </div>
+                </Card>
+
+                <div className="space-y-2">
+                    {subjectResources.map(res => (
+                         <div key={res.id} className="flex items-center p-3 bg-white dark:bg-dark-card rounded-lg border border-gray-200 dark:border-gray-700 animate-slide-up group">
+                            <div className={`p-2 rounded-full mr-3 ${
+                                res.type === 'PDF' ? 'bg-red-50 text-red-500 dark:bg-red-900/20' : 
+                                res.type === 'VIDEO' ? 'bg-red-50 text-red-600 dark:bg-red-900/20' : 'bg-blue-50 text-blue-500 dark:bg-blue-900/20'
+                            }`}>
+                                {res.type === 'PDF' ? <FileText size={20} /> : res.type === 'VIDEO' ? <Youtube size={20} /> : <LinkIcon size={20} />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h4 className="font-medium text-gray-900 dark:text-white truncate">{res.title}</h4>
+                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline truncate block flex items-center">
+                                    {res.url} <ExternalLink size={10} className="ml-1" />
+                                </a>
+                            </div>
+                            <button onClick={() => deleteResource(res.id)} className="p-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Trash2 size={18} />
+                            </button>
+                         </div>
+                    ))}
+                    {subjectResources.length === 0 && (
+                         <div className="flex flex-col items-center justify-center py-12 text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-xl">
+                            <LinkIcon size={32} className="mb-2 opacity-20" />
+                            <span className="text-sm">Biblioteca vazia</span>
+                         </div>
                     )}
                 </div>
             </div>
