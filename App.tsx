@@ -6,14 +6,11 @@ import { Dashboard } from './pages/Dashboard';
 import { Timetable } from './pages/Timetable';
 import { Subjects } from './pages/Subjects';
 import { Attendance } from './pages/Attendance';
+import { Tools } from './pages/Tools'; // Import Tools
 import { AppData, DayOfWeek } from './types';
 import { getDayName } from './utils';
 import { SUBJECTS, getScheduleForClass } from './constants';
 import { format } from 'date-fns';
-
-const TasksPageWrapper: React.FC = () => {
-    return <Subjects />;
-};
 
 const App: React.FC = () => {
   const [darkMode, setDarkMode] = useState(true);
@@ -117,7 +114,7 @@ const App: React.FC = () => {
               <Route path="/" element={<Dashboard />} />
               <Route path="/timetable" element={<Timetable />} />
               <Route path="/subjects" element={<Subjects />} />
-              <Route path="/tasks" element={<TasksPageWrapper />} />
+              <Route path="/tools" element={<Tools />} />
               <Route path="/stats" element={<Attendance />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

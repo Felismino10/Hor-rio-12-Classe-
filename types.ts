@@ -86,6 +86,36 @@ export interface Reminder {
   active: boolean;
 }
 
+// --- NEW TOOLS INTERFACES ---
+
+export interface Flashcard {
+    id: string;
+    front: string;
+    back: string;
+    subjectId: string; // Optional, can be general
+}
+
+export interface SchoolEvent {
+    id: string;
+    title: string;
+    date: string;
+    type: 'HOLIDAY' | 'EXAM' | 'OTHER';
+}
+
+export interface Question {
+    id: string;
+    subjectId: string;
+    text: string;
+    isAnswered: boolean;
+}
+
+export interface Contact {
+    id: string;
+    name: string;
+    role: string; // e.g. "Delegado", "Explicações"
+    phone: string;
+}
+
 // App State Interface for LocalStorage
 export interface AppData {
   userName?: string; // New: User profile name
@@ -98,5 +128,13 @@ export interface AppData {
   scheduleOverrides: ScheduleOverride[]; 
   studyActivityDates: string[]; 
   reminders: Reminder[]; 
-  selectedClassId: string; 
+  selectedClassId: string;
+  
+  // New Tool Data
+  flashcards: Flashcard[];
+  schoolEvents: SchoolEvent[];
+  questions: Question[];
+  contacts: Contact[];
+  // Canvas drawings could be huge, maybe store just one base64 string for the scratchpad
+  scratchpadData?: string; 
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Calendar, Book, CheckSquare, PieChart } from 'lucide-react';
+import { Home, Calendar, Book, LayoutGrid, PieChart } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
@@ -10,7 +10,7 @@ export const BottomNav: React.FC = () => {
     { path: '/', icon: Home, label: 'Hoje' },
     { path: '/timetable', icon: Calendar, label: 'Horário' },
     { path: '/subjects', icon: Book, label: 'Aulas' },
-    { path: '/tasks', icon: CheckSquare, label: 'Tarefas' },
+    { path: '/tools', icon: LayoutGrid, label: 'Extra' }, // Changed from Tasks to Tools
     { path: '/stats', icon: PieChart, label: 'Stats' },
   ];
 
